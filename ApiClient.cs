@@ -14,24 +14,24 @@ namespace ApiClient
 
         private string _accessToken, _refreshToken;
 
-        protected async Task<TResponse> Athorize<TResponse>(TControllersEnum controller, object body, Func<TResponse, string> accessToken, Func<TResponse, string> refreshToken, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
+        public abstract Task<(bool result,string accessToken,string refreshToken)> Authorize<TBody>(TBody body);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="oldAccessToken"></param>
+        /// <param name="oldRefreshToken"></param>
+        /// <returns>bool result</returns>
+        private protected abstract Task<(bool result, string newAccessToken, string newRefreshToken)> RefreshAccessToken(string oldAccessToken, string oldRefreshToken);
+
+        private async Task<bool> RefreshAccessToken()
         {
-            TResponse response = await Request<TResponse>(RequestTypes.POST, controller, body, Headers, route);
+            var result = await RefreshAccessToken(_accessToken, _refreshToken);
 
-            _accessToken = accessToken.Invoke(response);
-            _refreshToken = refreshToken.Invoke(response);
+            _accessToken = result.newAccessToken;
+            _refreshToken = result.newRefreshToken;
 
-            return response;
-        }
-
-        protected async Task<TResponse> RefreshAccessToken<TResponse>(TControllersEnum controller, object body, Func<TResponse, string> accessToken, Func<TResponse, string> refreshToken, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
-        {
-            TResponse response = await Request<TResponse>(RequestTypes.POST, controller, body, Headers, route);
-
-            _accessToken = accessToken.Invoke(response);
-            _refreshToken = refreshToken.Invoke(response);
-
-            return response;
+            return result.result;
         }
 
         public async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
