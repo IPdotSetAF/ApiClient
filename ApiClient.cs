@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -10,11 +11,34 @@ namespace ApiClient
 {
     public abstract class ApiClient<TControllersEnum> where TControllersEnum : Enum
     {
+        [JsonIgnore]
         public abstract string ApiAddress { get; set; }
 
-        private string _accessToken, _refreshToken;
+        [JsonProperty("AccessToken")]
+        private string _accessToken { get; set; }
 
-        public abstract Task<(bool result,string accessToken,string refreshToken)> Authorize<TBody>(TBody body);
+        [JsonProperty("RefreshToken")]
+        private string _refreshToken { get; set; }
+
+
+        [JsonIgnore]
+        public bool HasAccessToken => !String.IsNullOrEmpty(_accessToken);
+        [JsonIgnore]
+        public bool HasRefreshToken => !String.IsNullOrEmpty(_refreshToken);
+
+        private protected abstract Task<ApiClient<TControllersEnum>> OnRestoreCredentials();
+        public abstract Task StoreCredentials();
+        
+        public async Task RestoreCredentials()
+        {
+            var apiClient = await OnRestoreCredentials();
+
+            _accessToken = apiClient._accessToken;
+            _refreshToken = apiClient._refreshToken;
+        }
+
+
+        public abstract Task<(bool result, string accessToken, string refreshToken)> Authorize<TBody>(TBody body);
 
         /// <summary>
         /// 
@@ -30,6 +54,8 @@ namespace ApiClient
 
             _accessToken = result.newAccessToken;
             _refreshToken = result.newRefreshToken;
+
+            await StoreCredentials();
 
             return result.result;
         }
@@ -119,9 +145,10 @@ namespace ApiClient
             UPLOAD,
             DOWNLOAD
         }
+
     }
 
-    internal static class ApiManagerExtensions
+    internal static class ApiClientExtensions
     {
         internal static void ConfigureRequest(this WebClient request, string token, Dictionary<HttpRequestHeader, string> Headers)
         {
