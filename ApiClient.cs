@@ -11,6 +11,8 @@ namespace ApiClient
 {
     public abstract class ApiClient<TControllersEnum> where TControllersEnum : Enum
     {
+        private const string SerializeKey = "ApiCredentials";
+
         [JsonIgnore]
         public abstract string ApiAddress { get; set; }
 
@@ -26,22 +28,53 @@ namespace ApiClient
         [JsonIgnore]
         public bool HasRefreshToken => !String.IsNullOrEmpty(_refreshToken);
 
-        private protected abstract Task<ApiClient<TControllersEnum>> OnRestoreCredentials();
-        public abstract Task StoreCredentials();
-        
-        public async Task RestoreCredentials()
-        {
-            var apiClient = await OnRestoreCredentials();
+        private protected IDataStore _dataStore;
 
-            _accessToken = apiClient._accessToken;
-            _refreshToken = apiClient._refreshToken;
+        protected ApiClient(IDataStore dataStore)
+        {
+            _dataStore = dataStore;
+        }
+
+        public virtual async Task<bool> RestoreCredentials()
+        {
+            try
+            {
+                _accessToken = await _dataStore.GetAsync<string>(nameof(_accessToken));
+                _refreshToken = await _dataStore.GetAsync<string>(nameof(_refreshToken));
+
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public virtual async Task StoreCredentials()
+        {
+            await _dataStore.StoreAsync(nameof(_accessToken), _accessToken);
+            await _dataStore.StoreAsync(nameof(_refreshToken), _refreshToken);
         }
 
 
-        public abstract Task<(bool result, string accessToken, string refreshToken)> Authorize<TBody>(TBody body);
+        private protected abstract Task<(bool result, string accessToken, string refreshToken)> OnAuthorizing(Object login);
+
+        public async Task<bool> Authorize(Object login)
+        {
+            var loginResult = await OnAuthorizing(login);
+
+            if (loginResult.result)
+            {
+                _accessToken = loginResult.accessToken;
+                _refreshToken = loginResult.refreshToken;
+
+                await StoreCredentials();
+            }
+
+            return loginResult.result;
+        }
 
         /// <summary>
-        /// 
         /// </summary>
         /// <param name="oldAccessToken"></param>
         /// <param name="oldRefreshToken"></param>
@@ -145,7 +178,6 @@ namespace ApiClient
             UPLOAD,
             DOWNLOAD
         }
-
     }
 
     internal static class ApiClientExtensions
