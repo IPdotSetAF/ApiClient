@@ -79,11 +79,11 @@ namespace ApiClient
         /// <param name="oldAccessToken"></param>
         /// <param name="oldRefreshToken"></param>
         /// <returns>bool result</returns>
-        private protected abstract Task<(bool result, string newAccessToken, string newRefreshToken)> RefreshAccessToken(string oldAccessToken, string oldRefreshToken);
+        private protected abstract Task<(bool result, string newAccessToken, string newRefreshToken)> OnRefreshingAccessToken(string oldAccessToken, string oldRefreshToken);
 
-        private async Task<bool> RefreshAccessToken()
+        public async Task<bool> RefreshAccessToken()
         {
-            var result = await RefreshAccessToken(_accessToken, _refreshToken);
+            var result = await OnRefreshingAccessToken(_accessToken, _refreshToken);
 
             _accessToken = result.newAccessToken;
             _refreshToken = result.newRefreshToken;
@@ -93,7 +93,33 @@ namespace ApiClient
             return result.result;
         }
 
-        public async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
+        /// <summary>
+        /// Used for error handling on all requests.
+        /// Global Error handling is enabled by default but can be disabled using request parameters. 
+        /// </summary>
+        /// <param name="exception"></param>
+        /// <returns>boolean : Retry calling failed request.</returns>
+        private protected abstract Task<bool> GlobalErrorHandling(WebException exception);
+
+        public async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError=true, params string[] route)
+        {
+            if (handleError)
+            {
+                try
+                {
+                    return await Request<T>( type, controller,  body,  Headers ,  route);
+                }
+                catch (WebException e)
+                {
+                    if(await GlobalErrorHandling(e))
+                        return await Request<T>(type, controller, body, Headers, route);
+                }
+            }
+            //else
+            return await Request<T>(type, controller, body, Headers, route);
+        }
+
+        private async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
         {
             using (WebClient request = new WebClient())
             {
@@ -119,7 +145,25 @@ namespace ApiClient
             }
         }
 
-        public async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, byte[] data, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
+        public async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, byte[] data, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route)
+        {
+            if (handleError)
+            {
+                try
+                {
+                    return await RequestData(type, controller, data, Headers, route);
+                }
+                catch (WebException e)
+                {
+                    if (await GlobalErrorHandling(e))
+                        return await RequestData(type, controller, data, Headers, route);
+                }
+            }
+            //else
+            return await RequestData(type, controller, data, Headers, route);
+        }
+
+        private async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, byte[] data, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
         {
             using (WebClient request = new WebClient())
             {
@@ -134,7 +178,25 @@ namespace ApiClient
             }
         }
 
-        public async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, string filePath, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
+        public async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, string filePath, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route)
+        {
+            if (handleError)
+            {
+                try
+                {
+                    return await RequestData(type, controller, filePath, Headers, route);
+                }
+                catch (WebException e)
+                {
+                    if (await GlobalErrorHandling(e))
+                        return await RequestData(type, controller, filePath, Headers, route);
+                }
+            }
+            //else
+            return await RequestData(type, controller, filePath, Headers, route);
+        }
+
+        private async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, string filePath, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
         {
             using (WebClient request = new WebClient())
             {
