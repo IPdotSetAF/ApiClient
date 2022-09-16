@@ -72,7 +72,7 @@ namespace ApiClient
         /// <returns name="result">indicates if the authorization was successful</returns>
         /// <returns name="accessToken">retrived access token</returns>
         /// <returns name="refreshToken">retrived refresh token</returns>
-        private protected abstract Task<(bool result, string accessToken, string refreshToken)> OnAuthorizing(Object login);
+        protected abstract Task<(bool result, string accessToken, string refreshToken)> OnAuthorizing(Object login);
 
         public async Task<bool> Authorize(Object login)
         {
@@ -97,7 +97,7 @@ namespace ApiClient
         /// <returns name="result">indicates if the accesstoken refreshing was successful</returns>
         /// <returns name="newAccessToken">retrived access token</returns>
         /// <returns name="newRefreshToken">retrived refresh token</returns>
-        private protected abstract Task<(bool result, string newAccessToken, string newRefreshToken)> OnRefreshingAccessToken(string oldAccessToken, string oldRefreshToken);
+        protected abstract Task<(bool result, string newAccessToken, string newRefreshToken)> OnRefreshingAccessToken(string oldAccessToken, string oldRefreshToken);
 
         public async Task<bool> RefreshAccessToken()
         {
@@ -121,7 +121,7 @@ namespace ApiClient
         /// </summary>
         /// <param name="exception">thrown ApiClientException</param>
         /// <returns>return true in order to recall the failed request, false in order to ignore request</returns>
-        private protected abstract Task<bool> GlobalErrorHandling(ApiClientException exception);
+        protected abstract Task<bool> GlobalErrorHandling(ApiClientException exception);
 
         #endregion
 
