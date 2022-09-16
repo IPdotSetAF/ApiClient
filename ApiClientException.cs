@@ -2,7 +2,7 @@
 using System.Net;
 using System.Runtime.Serialization;
 
-namespace Enzyme.Core.ApiClient
+namespace ApiClient
 {
     public class ApiClientException : WebException
     {

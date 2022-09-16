@@ -1,6 +1,6 @@
 ﻿using System.Net;
 
-namespace Enzyme.Core.ApiClient
+namespace ApiClient
 {
     internal static class ApiClientExtensions
     {

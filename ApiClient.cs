@@ -6,7 +6,6 @@ using System.Net;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
-using Enzyme.Core.ApiClient;
 using Newtonsoft.Json;
 
 namespace ApiClient
