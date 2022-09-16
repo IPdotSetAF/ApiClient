@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
+using Enzyme.Core.ApiClient;
 using Newtonsoft.Json;
 
 namespace ApiClient
@@ -35,6 +37,8 @@ namespace ApiClient
             _dataStore = dataStore;
         }
 
+        #region DataStore
+
         public virtual async Task<bool> RestoreCredentials()
         {
             try
@@ -44,8 +48,10 @@ namespace ApiClient
 
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Error restoring data : {ex.Message}");
+
                 return false;
             }
         }
@@ -56,7 +62,17 @@ namespace ApiClient
             await _dataStore.StoreAsync(nameof(_refreshToken), _refreshToken);
         }
 
+        #endregion
 
+        #region AccessToken
+
+        /// <summary>
+        /// Implement the authorization logic here
+        /// </summary>
+        /// <param name="login">login model</param>
+        /// <returns name="result">indicates if the authorization was successful</returns>
+        /// <returns name="accessToken">retrived access token</returns>
+        /// <returns name="refreshToken">retrived refresh token</returns>
         private protected abstract Task<(bool result, string accessToken, string refreshToken)> OnAuthorizing(Object login);
 
         public async Task<bool> Authorize(Object login)
@@ -75,10 +91,13 @@ namespace ApiClient
         }
 
         /// <summary>
+        /// Implement the "refreshing access token" logic here
         /// </summary>
-        /// <param name="oldAccessToken"></param>
-        /// <param name="oldRefreshToken"></param>
-        /// <returns>bool result</returns>
+        /// <param name="oldAccessToken">previous access token</param>
+        /// <param name="oldRefreshToken">previous refresh token</param>
+        /// <returns name="result">indicates if the accesstoken refreshing was successful</returns>
+        /// <returns name="newAccessToken">retrived access token</returns>
+        /// <returns name="newRefreshToken">retrived refresh token</returns>
         private protected abstract Task<(bool result, string newAccessToken, string newRefreshToken)> OnRefreshingAccessToken(string oldAccessToken, string oldRefreshToken);
 
         public async Task<bool> RefreshAccessToken()
@@ -93,31 +112,82 @@ namespace ApiClient
             return result.result;
         }
 
+        #endregion
+
+        #region GlobalErrorHandling
+
         /// <summary>
         /// Used for error handling on all requests.
         /// Global Error handling is enabled by default but can be disabled using request parameters. 
         /// </summary>
-        /// <param name="exception"></param>
-        /// <returns>boolean : Retry calling failed request.</returns>
-        private protected abstract Task<bool> GlobalErrorHandling(WebException exception);
+        /// <param name="exception">thrown ApiClientException</param>
+        /// <returns>return true in order to recall the failed request, false in order to ignore request</returns>
+        private protected abstract Task<bool> GlobalErrorHandling(ApiClientException exception);
 
-        public async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError=true, params string[] route)
+        #endregion
+
+        #region PublicRequests
+
+        public async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route)
         {
-            if (handleError)
+            try
             {
-                try
-                {
-                    return await Request<T>( type, controller,  body,  Headers ,  route);
-                }
-                catch (WebException e)
-                {
-                    if(await GlobalErrorHandling(e))
-                        return await Request<T>(type, controller, body, Headers, route);
-                }
+                return await Request<T>(type, controller, body, Headers, route);
             }
-            //else
-            return await Request<T>(type, controller, body, Headers, route);
+            catch (WebException e)
+            {
+                ApiClientException apiClientException = new ApiClientException(e);
+
+                if (!handleError)
+                    throw apiClientException;
+
+                if (await GlobalErrorHandling(apiClientException))
+                    return await Request<T>(type, controller, body, Headers, route);
+                else throw new NullReferenceException();
+            }
         }
+
+        public async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, byte[] data, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route)
+        {
+            try
+            {
+                return await RequestData(type, controller, data, Headers, route);
+            }
+            catch (WebException e)
+            {
+                ApiClientException apiClientException = new ApiClientException(e);
+
+                if (!handleError)
+                    throw apiClientException;
+
+                if (await GlobalErrorHandling(apiClientException))
+                    return await RequestData(type, controller, data, Headers, route);
+                else throw new NullReferenceException();
+            }
+        }
+
+        public async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, string filePath, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route)
+        {
+            try
+            {
+                return await RequestData(type, controller, filePath, Headers, route);
+            }
+            catch (WebException e)
+            {
+                ApiClientException apiClientException = new ApiClientException(e);
+
+                if (!handleError)
+                    throw apiClientException;
+
+                if (await GlobalErrorHandling(new ApiClientException(e)))
+                    return await RequestData(type, controller, filePath, Headers, route);
+                else throw new NullReferenceException();
+            }
+        }
+
+        #endregion
+
+        #region PrivateRequests
 
         private async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
         {
@@ -145,24 +215,6 @@ namespace ApiClient
             }
         }
 
-        public async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, byte[] data, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route)
-        {
-            if (handleError)
-            {
-                try
-                {
-                    return await RequestData(type, controller, data, Headers, route);
-                }
-                catch (WebException e)
-                {
-                    if (await GlobalErrorHandling(e))
-                        return await RequestData(type, controller, data, Headers, route);
-                }
-            }
-            //else
-            return await RequestData(type, controller, data, Headers, route);
-        }
-
         private async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, byte[] data, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
         {
             using (WebClient request = new WebClient())
@@ -176,24 +228,6 @@ namespace ApiClient
                 else
                     return await request.DownloadDataTaskAsync(address);
             }
-        }
-
-        public async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, string filePath, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route)
-        {
-            if (handleError)
-            {
-                try
-                {
-                    return await RequestData(type, controller, filePath, Headers, route);
-                }
-                catch (WebException e)
-                {
-                    if (await GlobalErrorHandling(e))
-                        return await RequestData(type, controller, filePath, Headers, route);
-                }
-            }
-            //else
-            return await RequestData(type, controller, filePath, Headers, route);
         }
 
         private async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, string filePath, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
@@ -213,6 +247,8 @@ namespace ApiClient
                 }
             }
         }
+
+        #endregion
 
         private string UrlBuilder(TControllersEnum controller, params string[] route)
         {
@@ -239,19 +275,6 @@ namespace ApiClient
         {
             UPLOAD,
             DOWNLOAD
-        }
-    }
-
-    internal static class ApiClientExtensions
-    {
-        internal static void ConfigureRequest(this WebClient request, string token, Dictionary<HttpRequestHeader, string> Headers)
-        {
-            if (token != null)
-                request.Headers.Add("Authorization", $"Bearer {token}");
-
-            if (Headers != null)
-                foreach (KeyValuePair<HttpRequestHeader, string> header in Headers)
-                    request.Headers.Add(header.Key, header.Value);
         }
     }
 }
