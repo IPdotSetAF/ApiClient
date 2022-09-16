@@ -260,20 +260,20 @@ namespace ApiClient
 
             return builder.ToString();
         }
+    }
 
-        public enum RequestTypes
-        {
-            GET,
-            POST,
-            DELETE,
-            PUT,
-            PATCH
-        }
+    public enum RequestTypes
+    {
+        GET,
+        POST,
+        DELETE,
+        PUT,
+        PATCH
+    }
 
-        public enum DataRequestTypes
-        {
-            UPLOAD,
-            DOWNLOAD
-        }
+    public enum DataRequestTypes
+    {
+        UPLOAD,
+        DOWNLOAD
     }
 }
