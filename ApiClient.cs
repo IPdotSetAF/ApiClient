@@ -127,7 +127,7 @@ namespace ApiClient
 
         #region PublicRequests
 
-        public async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route)
+        public async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route) where T : class
         {
             try
             {
@@ -142,7 +142,7 @@ namespace ApiClient
 
                 if (await GlobalErrorHandling(apiClientException))
                     return await Request<T>(type, controller, body, Headers, route);
-                else throw new NullReferenceException();
+                else return null;
             }
         }
 
@@ -161,7 +161,7 @@ namespace ApiClient
 
                 if (await GlobalErrorHandling(apiClientException))
                     return await RequestData(type, controller, data, Headers, route);
-                else throw new NullReferenceException();
+                else return null;
             }
         }
 
@@ -180,7 +180,7 @@ namespace ApiClient
 
                 if (await GlobalErrorHandling(new ApiClientException(e)))
                     return await RequestData(type, controller, filePath, Headers, route);
-                else throw new NullReferenceException();
+                else return null;
             }
         }
 
