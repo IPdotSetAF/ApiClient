@@ -103,10 +103,13 @@ namespace ApiClient
         {
             var result = await OnRefreshingAccessToken(_accessToken, _refreshToken);
 
-            _accessToken = result.newAccessToken;
-            _refreshToken = result.newRefreshToken;
+            if (result.result)
+            {
+                _accessToken = result.newAccessToken;
+                _refreshToken = result.newRefreshToken;
 
-            await StoreCredentials();
+                await StoreCredentials();
+            }
 
             return result.result;
         }
