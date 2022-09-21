@@ -46,8 +46,8 @@ namespace ApiClient
             }
         }
 
-        //TODO: not tested (will probably fail)
-        public T GetResponse<T>() where T : class
+
+        public T? GetResponse<T>() where T : class
         {
             return JsonConvert.DeserializeObject<T>(Response);
         }
