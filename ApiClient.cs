@@ -10,7 +10,7 @@ using Newtonsoft.Json;
 
 namespace ApiClient
 {
-    public abstract class ApiClient<TControllersEnum> where TControllersEnum : Enum
+    public abstract class ApiClient<TControllersEnum, TDataStore> where TControllersEnum : Enum where TDataStore : IDataStore, new()
     {
         private const string SerializeKey = "ApiCredentials";
 
@@ -24,17 +24,21 @@ namespace ApiClient
         private string _refreshToken { get; set; }
 
 
-        [JsonIgnore]
-        public bool HasAccessToken => !String.IsNullOrEmpty(_accessToken);
-        [JsonIgnore]
-        public bool HasRefreshToken => !String.IsNullOrEmpty(_refreshToken);
-
-        private protected IDataStore _dataStore;
-
-        protected ApiClient(IDataStore dataStore)
+        public async Task<bool> HasAccessToken()
         {
-            _dataStore = dataStore;
+            if (string.IsNullOrEmpty(_accessToken))
+                await RestoreCredentials();
+            return !String.IsNullOrEmpty(_accessToken);
         }
+
+        public async Task<bool> HasRefreshToken()
+        {
+            if (string.IsNullOrEmpty(_refreshToken))
+                await RestoreCredentials();
+            return !String.IsNullOrEmpty(_refreshToken);
+        }
+
+        private protected IDataStore _dataStore = new TDataStore();
 
         #region DataStore
 
