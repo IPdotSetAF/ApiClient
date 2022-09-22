@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using System.Diagnostics;
+using Newtonsoft.Json;
 using System.Net;
 using System.Runtime.Serialization;
 
@@ -39,8 +40,9 @@ namespace ApiClient
                 {
                     return ((HttpWebResponse) base.Response).StatusCode;
                 }
-                catch
+                catch (Exception e)
                 {
+                    Debug.WriteLine(e);
                     return null;
                 }
             }
