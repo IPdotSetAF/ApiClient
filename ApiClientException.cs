@@ -31,7 +31,20 @@ namespace ApiClient
         }
 
         [JsonIgnore]
-        public HttpStatusCode StatusCode => ((HttpWebResponse)base.Response).StatusCode;
+        public HttpStatusCode? StatusCode
+        {
+            get
+            {
+                try
+                {
+                    return ((HttpWebResponse) base.Response).StatusCode;
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
 
         //does not return just the body
         [JsonIgnore]
