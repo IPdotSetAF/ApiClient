@@ -134,7 +134,7 @@ namespace ApiClient
 
         #region PublicRequests
 
-        public async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route) where T : class
+        public async Task<T?> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string>? Headers = null, bool handleError = true, RouteBuilder? route = null) where T : class
         {
             try
             {
@@ -153,7 +153,7 @@ namespace ApiClient
             }
         }
 
-        public async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, byte[] data, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route)
+        public async Task<byte[]?> RequestData(DataRequestTypes type, TControllersEnum controller, byte[] data, Dictionary<HttpRequestHeader, string>? Headers = null, bool handleError = true, RouteBuilder? route = null)
         {
             try
             {
@@ -172,7 +172,7 @@ namespace ApiClient
             }
         }
 
-        public async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, string filePath, Dictionary<HttpRequestHeader, string> Headers = null, bool handleError = true, params string[] route)
+        public async Task<byte[]?> RequestData(DataRequestTypes type, TControllersEnum controller, string filePath, Dictionary<HttpRequestHeader, string>? Headers = null, bool handleError = true, RouteBuilder? route = null)
         {
             try
             {
@@ -195,39 +195,43 @@ namespace ApiClient
 
         #region PrivateRequests
 
-        private async Task<T> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
+        private async Task<T?> Request<T>(RequestTypes type, TControllersEnum controller, object body = null, Dictionary<HttpRequestHeader, string>? Headers = null, RouteBuilder? route = null)
         {
             using (WebClient request = new WebClient())
             {
                 request.ConfigureRequest(_accessToken, Headers);
 
-                string address = UrlBuilder(controller, route);
+                string address = route.BuildUrl(ApiAddress, controller);
+
+                string response;
                 switch (type)
                 {
                     case RequestTypes.GET:
                         {
-                            return JsonConvert.DeserializeObject<T>(
-                                await request.DownloadStringTaskAsync(address));
+                            response = await request.DownloadStringTaskAsync(address);
+                            break;
                         }
                     default:
                         {
                             request.Headers.Add(HttpRequestHeader.ContentType, "application/json");
 
-                            return JsonConvert.DeserializeObject<T>(
-                                await request.UploadStringTaskAsync(address, type.ToString(),
-                                    JsonConvert.SerializeObject(body, Formatting.Indented)));
+                            response = await request.UploadStringTaskAsync(address, type.ToString(), JsonConvert.SerializeObject(body, Formatting.Indented));
+
+                            break;
                         }
                 }
+
+                return JsonConvert.DeserializeObject<T>(response);
             }
         }
 
-        private async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, byte[] data, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
+        private async Task<byte[]?> RequestData(DataRequestTypes type, TControllersEnum controller, byte[] data, Dictionary<HttpRequestHeader, string>? Headers = null, RouteBuilder? route = null)
         {
             using (WebClient request = new WebClient())
             {
                 request.ConfigureRequest(_accessToken, Headers);
 
-                string address = UrlBuilder(controller, route);
+                string address = route.BuildUrl(ApiAddress, controller);
 
                 if (type == DataRequestTypes.UPLOAD)
                     return await request.UploadDataTaskAsync(address, type.ToString(), data);
@@ -236,13 +240,13 @@ namespace ApiClient
             }
         }
 
-        private async Task<byte[]> RequestData(DataRequestTypes type, TControllersEnum controller, string filePath, Dictionary<HttpRequestHeader, string> Headers = null, params string[] route)
+        private async Task<byte[]?> RequestData(DataRequestTypes type, TControllersEnum controller, string filePath, Dictionary<HttpRequestHeader, string>? Headers = null, RouteBuilder? route=null)
         {
             using (WebClient request = new WebClient())
             {
                 request.ConfigureRequest(_accessToken, Headers);
 
-                string address = UrlBuilder(controller, route);
+                string address = route.BuildUrl(ApiAddress, controller);
 
                 if (type == DataRequestTypes.UPLOAD)
                     return await request.UploadFileTaskAsync(address, type.ToString(), filePath);
@@ -256,17 +260,7 @@ namespace ApiClient
 
         #endregion
 
-        private string UrlBuilder(TControllersEnum controller, params string[] route)
-        {
-            StringBuilder builder = new StringBuilder(ApiAddress);
-
-            builder.Append('/').Append(controller);
-
-            foreach (var s in route)
-                builder.Append('/').Append(s);
-
-            return builder.ToString();
-        }
+        
     }
 
     public enum RequestTypes

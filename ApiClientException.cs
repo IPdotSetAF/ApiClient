@@ -38,6 +38,7 @@ namespace ApiClient
             {
                 try
                 {
+                    //still throws nullrefrence exception if request fails (internet maybe)
                     return ((HttpWebResponse) base.Response).StatusCode;
                 }
                 catch (Exception e)
