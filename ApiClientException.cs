@@ -32,10 +32,13 @@ namespace ApiClient
         }
 
         [JsonIgnore]
-        public HttpStatusCode? StatusCode
+        public HttpStatusCode StatusCode
         {
             get
             {
+                if (base.Response == null)
+                    return HttpStatusCode.GatewayTimeout;
+
                 try
                 {
                     //still throws nullrefrence exception if request fails (internet maybe)
@@ -44,7 +47,7 @@ namespace ApiClient
                 catch (Exception e)
                 {
                     Debug.WriteLine(e);
-                    return null;
+                    return HttpStatusCode.GatewayTimeout;
                 }
             }
         }
